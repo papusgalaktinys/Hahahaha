@@ -50,4 +50,3 @@ jobs:
           git add links.txt sub.txt
           git commit -m "PapusVPN: добавлены красивые лимиты и обновлены ключи 🌐" || exit 0
           git push
-          
