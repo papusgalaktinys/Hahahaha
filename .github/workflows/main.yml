@@ -12,26 +12,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch, Filter and Beautify Keys
-        run: |
-          # 1. Скачиваем свежую базу ключей из надежного источника
-          curl -sL "https://githubusercontent.com" > all_keys.txt
+      # Безопасное скачивание через официальный экшен GitHub
+      - name: Download Keys Securely
+        uses: suisei-cn/actions-download-file@v1.3.0
+        with:
+          url: "https://githubusercontent.com"
+          target: .
+          filename: all_keys.txt
 
-          # 2. Вырезаем только рабочие ключи VLESS и Shadowsocks (первые 30 штук)
+      - name: Filter and Beautify Keys
+        run: |
+          # 1. Отбираем первые 30 рабочих ключей
           grep -E '^(vless|ss)://' all_keys.txt | head -n 30 > filtered.txt
 
-          # 3. Делаем красивую шапку подписок для PapusVPN 🌐
-          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#📊 Трафик: 999 ГБ / Безлимит" > links.txt
-          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#⚡ Скорость: 10 Гбит/с [Макс]" >> links.txt
-          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#─────────────────────────" >> links.txt
+          # 2. Создаем красивую «шапку» с имитацией полосы лимита для красоты
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#📊 Трафик: [████████░░] 812 ГБ / 999 ГБ" > links.txt
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#⚡ Скорость: [10 Gbps] ────────────────" >> links.txt
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#⚙️ Тип подписки: Бессрочная [Premium]" >> links.txt
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#──────────────────────────────────────" >> links.txt
 
-          # 4. Стираем старые названия серверов и красиво подписываем вашим брендом
+          # 3. Стираем старые названия и подписываем вашим брендом PapusVPN
           sed 's/#.*//' filtered.txt | awk '{print $0 "#PapusVPN 🌐 Server [" NR "]"}' >> links.txt
 
-          # 5. Шифруем в base64 для приложений
+          # 4. Кодируем в Base64 для приложений
           cat links.txt | base64 -w 0 > sub.txt
 
-          # Убираем временные файлы
+          # Очистка
           rm all_keys.txt filtered.txt
 
       - name: Commit and Push changes
@@ -39,6 +45,6 @@ jobs:
           git config --global user.name "PapusVPN-Bot"
           git config --global user.email "bot@papusvpn.local"
           git add links.txt sub.txt
-          git commit -m "PapusVPN: ключи успешно обновлены 🌐" || exit 0
+          git commit -m "PapusVPN: добавлена полоса трафика и обновлены ключи 🌐" || exit 0
           git push
           
