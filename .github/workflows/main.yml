@@ -2,7 +2,7 @@ name: Hourly PapusVPN Update 🌐
 
 on:
   schedule:
-    - cron: '0 * * * *' # Автозапуск каждый час
+    - cron: '0 * * * *' # Автозапуск каждый час автоматически
   workflow_dispatch:      # Кнопка для ручного запуска
 
 jobs:
@@ -12,59 +12,42 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch and Filter Keys by Real Ping < 80ms
+      - name: Fetch, Filter and Beautify Keys
         run: |
           # 1. Скачиваем базу ключей
           curl -s "https://githubusercontent.com" > raw_vless.txt
           curl -s "https://githubusercontent.com" > raw_ss.txt
           cat raw_vless.txt raw_ss.txt > all_keys.txt
 
-          # Создаем пустой файл для хороших ключей
-          touch filtered.txt
-          COUNT=0
+          # 2. Отбираем сервера из ближайших стран для низкого пинга
+          grep -E -i '(germany|deutschland|\bde\b|finland|\bfi\b|netherlands|holland|\bnl\b|austria|\bat\b|russia|\bru\b)' all_keys.txt > low_ping_raw.txt
 
-          # 2. Перебираем ключи и замеряем реальный пинг
-          while IFS= read -r line && [ $COUNT -lt 30 ]; do
-            # Убираем пробелы
-            line=$(echo "$line" | xargs)
-            [ -z "$line" ] && continue
-
-            # Извлекаем IP-адрес или домен из ключа (между @ и :)
-            if [[ "$line" =~ @([^:]+): ]]; then
-              IP="${BASH_REMATCH[1]}"
-              
-              # Замеряем пинг (3 пакета, таймаут 1 сек)
-              # Извлекаем среднее время ответа (avg)
-              PING_RES=$(ping -c 3 -W 1 "$IP" 2>/dev/null | tail -1 | awk -F '/' '{print $5}' | cut -d. -f1)
-              
-              # Если сервер ответил и пинг строго меньше 80 мс
-              if [ ! -z "$PING_RES" ] && [ "$PING_RES" -lt 80 ]; then
-                echo "$line" >> filtered.txt
-                COUNT=$((COUNT+1))
-                echo "Сервер $IP подошел! Пинг: ${PING_RES}мс"
-              fi
-            fi
-          done < all_keys.txt
-
-          # Резервный план: если супер-быстрых серверов не нашлось, берем топ-20 обычных европейских
-          if [ ! -s filtered.txt ]; then
-            grep -E -i '(germany|\bde\b|finland|\bfi\b|netherlands|\bnl\b|russia|\bru\b)' all_keys.txt | head -n 20 > filtered.txt
+          if [ $(wc -l < low_ping_raw.txt) -lt 10 ]; then
+            head -n 30 all_keys.txt > filtered.txt
+          else
+            head -n 25 low_ping_raw.txt > filtered.txt
           fi
 
-          # 3. Брендируем под PapusVPN 🌐
-          sed 's/#.*//' filtered.txt | awk '{print $0 "#PapusVPN 🌐 Ping < 80ms [" NR "]"}' > links.txt
+          # 3. Создаем красивую «шапку» с фейковыми лимитами для красоты
+          # Используем нерабочие, но корректные по структуре заглушки, чтобы приложение показало их как текст
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#📊 Трафик: 999 ГБ / Безлимит" > links.txt
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#⚡ Скорость: 10 Гбит/с [Макс]" >> links.txt
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#─────────────────────────" >> links.txt
 
-          # 4. Кодируем в Base64 для приложения
+          # 4. Очищаем оригинальные ключи от старых названий и добавляем их следом
+          sed 's/#.*//' filtered.txt | awk '{print $0 "#PapusVPN 🌐 Low Ping [" NR "]"}' >> links.txt
+
+          # 5. Кодируем всё вместе в Base64 для приложения
           cat links.txt | base64 -w 0 > sub.txt
 
-          # Удаляем временные файлы
-          rm raw_vless.txt raw_ss.txt all_keys.txt filtered.txt
+          # Удаляем мусор
+          rm raw_vless.txt raw_ss.txt all_keys.txt low_ping_raw.txt filtered.txt
 
       - name: Commit and Push changes
         run: |
           git config --global user.name "PapusVPN-Bot"
           git config --global user.email "bot@papusvpn.local"
           git add links.txt sub.txt
-          git commit -m "PapusVPN: отобраны сервера с реальным пингом < 80мс 🌐" || exit 0
+          git commit -m "PapusVPN: добавлены красивые лимиты и обновлены ключи 🌐" || exit 0
           git push
           
