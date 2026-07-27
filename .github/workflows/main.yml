@@ -29,7 +29,6 @@ jobs:
           fi
 
           # 3. Создаем красивую «шапку» с фейковыми лимитами для красоты
-          # Используем нерабочие, но корректные по структуре заглушки, чтобы приложение показало их как текст
           echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#📊 Трафик: 999 ГБ / Безлимит" > links.txt
           echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#⚡ Скорость: 10 Гбит/с [Макс]" >> links.txt
           echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#─────────────────────────" >> links.txt
@@ -48,6 +47,6 @@ jobs:
           git config --global user.name "PapusVPN-Bot"
           git config --global user.email "bot@papusvpn.local"
           git add links.txt sub.txt
-          git commit -m "PapusVPN: добавлены красивые лимиты и обновлены ключи 🌐" || exit 0
+          git commit -m "PapusVPN: добавлены лимиты и обновлены ключи 🌐" || exit 0
           git push
           
