@@ -14,39 +14,37 @@ jobs:
 
       - name: Fetch, Filter and Beautify Keys
         run: |
-          # 1. Скачиваем базу ключей
-          curl -s "https://githubusercontent.com" > raw_vless.txt
-          curl -s "https://githubusercontent.com" > raw_ss.txt
-          cat raw_vless.txt raw_ss.txt > all_keys.txt
+          # 1. Скачиваем свежую базу ключей
+          curl -sL "https://githubusercontent.com" > all_keys.txt
+          curl -sL "https://githubusercontent.com" >> all_keys.txt
 
-          # 2. Отбираем сервера из ближайших стран для низкого пинга
-          grep -E -i '(germany|deutschland|\bde\b|finland|\bfi\b|netherlands|holland|\bnl\b|austria|\bat\b|russia|\bru\b)' all_keys.txt > low_ping_raw.txt
+          # 2. Вырезаем сервера из Европы и РФ (Германия, Финляндия, Нидерланды, Россия)
+          grep -E -i '(germany|de|finland|fi|netherlands|nl|russia|ru)' all_keys.txt | head -n 30 > filtered.txt
 
-          if [ $(wc -l < low_ping_raw.txt) -lt 10 ]; then
+          # Если подходящих не нашлось, просто берём первые 30 рабочих ключей
+          if [ ! -s filtered.txt ]; then
             head -n 30 all_keys.txt > filtered.txt
-          else
-            head -n 25 low_ping_raw.txt > filtered.txt
           fi
 
-          # 3. Создаем красивую «шапку» с фейковыми лимитами для красоты
+          # 3. Делаем красивую шапку подписок для PapusVPN 🌐
           echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#📊 Трафик: 999 ГБ / Безлимит" > links.txt
           echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#⚡ Скорость: 10 Гбит/с [Макс]" >> links.txt
           echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#─────────────────────────" >> links.txt
 
-          # 4. Очищаем оригинальные ключи от старых названий и добавляем их следом
+          # 4. Стираем старые названия серверов и красиво подписываем вашим брендом
           sed 's/#.*//' filtered.txt | awk '{print $0 "#PapusVPN 🌐 Low Ping [" NR "]"}' >> links.txt
 
-          # 5. Кодируем всё вместе в Base64 для приложения
+          # 5. Шифруем в base64 для приложений
           cat links.txt | base64 -w 0 > sub.txt
 
-          # Удаляем мусор
-          rm raw_vless.txt raw_ss.txt all_keys.txt low_ping_raw.txt filtered.txt
+          # Убираем временные файлы
+          rm all_keys.txt filtered.txt
 
       - name: Commit and Push changes
         run: |
           git config --global user.name "PapusVPN-Bot"
           git config --global user.email "bot@papusvpn.local"
           git add links.txt sub.txt
-          git commit -m "PapusVPN: добавлены лимиты и обновлены ключи 🌐" || exit 0
+          git commit -m "PapusVPN: ключи успешно обновлены 🌐" || exit 0
           git push
           
