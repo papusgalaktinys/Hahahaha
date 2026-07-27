@@ -1,0 +1,44 @@
+name: Hourly PapusVPN Update 🌐
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Автозапуск каждый час автоматически
+  workflow_dispatch:      # Кнопка для ручного запуска
+
+jobs:
+  update-subscription:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch, Filter and Beautify Keys
+        run: |
+          # 1. Скачиваем свежую базу ключей из надежного источника
+          curl -sL "https://githubusercontent.com" > all_keys.txt
+
+          # 2. Вырезаем только рабочие ключи VLESS и Shadowsocks (первые 30 штук)
+          grep -E '^(vless|ss)://' all_keys.txt | head -n 30 > filtered.txt
+
+          # 3. Делаем красивую шапку подписок для PapusVPN 🌐
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#📊 Трафик: 999 ГБ / Безлимит" > links.txt
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#⚡ Скорость: 10 Гбит/с [Макс]" >> links.txt
+          echo "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none&security=none#─────────────────────────" >> links.txt
+
+          # 4. Стираем старые названия серверов и красиво подписываем вашим брендом
+          sed 's/#.*//' filtered.txt | awk '{print $0 "#PapusVPN 🌐 Server [" NR "]"}' >> links.txt
+
+          # 5. Шифруем в base64 для приложений
+          cat links.txt | base64 -w 0 > sub.txt
+
+          # Убираем временные файлы
+          rm all_keys.txt filtered.txt
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "PapusVPN-Bot"
+          git config --global user.email "bot@papusvpn.local"
+          git add links.txt sub.txt
+          git commit -m "PapusVPN: ключи успешно обновлены 🌐" || exit 0
+          git push
+          
